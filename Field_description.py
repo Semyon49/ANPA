@@ -7,34 +7,44 @@ blue:  tuple = (255, 0, 0)
 green: tuple = (0, 255, 0)
 red:   tuple = (0, 0, 255)
 
-
-def drawContur(img, conrour):
+# Test func
+def drawContur(img, conrour) -> None:
     cv.drawContours(img, [conrour], 0, red, 5)
     cv.imshow('', img)
     cv.waitKey(1)
 
+def search_coordinates(contours) -> tuple:
+    try:
+        moments = cv.moments(contours[0])
+        x = moments["m10"] / moments["m00"]
+        y = (moments['m01'] - 0.5 * moments['m01']) / moments['m00']
+        return x, y
+    except ZeroDivisionError:
+        return None
+    
 def search_object(image) -> str:
-    hash_figure: list = []
     name_figure: dict[int, str] = {0: 'Circle', 3: 'Triangle', 4: 'Quadrilateral'}
 
-    img  = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-
+    image_hsv  = cv.cvtColor(image, cv.COLOR_BGR2HSV)
     hsv_low, hsv_max = (25, 100, 100), (150, 255, 255)
 
-    mask = cv.inRange(img, hsv_low, hsv_max)
+    img = cv.inRange(image_hsv, hsv_low, hsv_max)
+    blurred = cv.GaussianBlur(img, (5, 5), 0)
+    mask = cv.Canny(blurred, 50, 150, apertureSize=3)
+
     contours, _ =cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
     for conrour in contours:
-        approx = cv.approxPolyDP(conrour, 0.01 * cv.arcLength(conrour, True), True)
-        
+        approx = cv.approxPolyDP(conrour, 0.05 * cv.arcLength(conrour, True), True)
         try:
-            if name_figure[len(approx)] is None: continue
-            if len(approx) < 5: print(name_figure[len(approx)])
-            drawContur(img, conrour)
-        except  KeyError:
-            sleep(0.1)
+            print(name_figure[len(approx)])# is test func
+            drawContur(image, conrour)     # is test func
+
+            return name_figure[len(approx)]
+        except KeyError:
+            continue
     
-# Test
+# Test func
 while True:
     sleep(0)
     image = auv.get_image_bottom()
