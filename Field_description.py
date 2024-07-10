@@ -3,18 +3,15 @@ import pymurapi as mur
 from time import sleep
 
 auv = mur.mur_init()
+image = auv.get_image_bottom()
+height, width = image.shape[:2]
+speed = 10
 blue:  tuple = (255, 0, 0)
 green: tuple = (0, 255, 0)
 red:   tuple = (0, 0, 255)
 
-# Test func
-def drawContur(img, conrour) -> None:
-    cv.drawContours(img, [conrour], 0, red, 5)
-    cv.imshow('', img)
-    cv.waitKey(1)
 
 def search_coordinates(contours) -> tuple[int, int]:
-    if contours is None: return None
     try:
         moments = cv.moments(contours[0])
         x = moments['m10'] / moments['m00']
@@ -22,12 +19,12 @@ def search_coordinates(contours) -> tuple[int, int]:
         return x, y
     except ZeroDivisionError:
         return None
-    except  IndexError:
+    except IndexError:
         return None
     
-def search_object(image) -> str:
+def search_object(image) -> tuple[str, int, int]:
     name_figure: dict[int, str] = {3: 'Triangle', 4: 'Quadrilateral'}
-    hsv_low, hsv_max = (25, 100, 100), (150, 255, 255)
+    hsv_low, hsv_max = (25, 100, 10), (150, 255, 255)
 
     image_hsv  = cv.cvtColor(image, cv.COLOR_BGR2HSV)
 
@@ -36,40 +33,27 @@ def search_object(image) -> str:
 
     mask = cv.Canny(blurred, 50, 150, apertureSize=3)
 
-    contours, _ =cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    contours, _ =cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
 
     for conrour in contours:
         approx = cv.approxPolyDP(conrour, 0.05 * cv.arcLength(conrour, True), True)
 
-        try:
-            print(name_figure[len(approx)])# is test func
-            drawContur(image, conrour)     # is test func
-            search_coordinates(contours)
+        if search_coordinates(contours) is not None: 
+            x, y = search_coordinates(contours)
+            if abs(width / 2 - x) < 25 and abs(height / 2 - y) < 35:
+                try:
+                    print(name_figure[len(approx)])# is test func
+                    cv.drawContours(image, contours, -1, (0,255,0), 3)
+                    cv.imshow('',image)
+                    cv.waitKey(1)
 
-            return name_figure[len(approx)]
-        except KeyError:
-            continue
-
-def ride_red_line(image):
-    img = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-
-    hsv_low, hsv_max = (0, 3, 20), (27, 255, 255)
-
-    mask = cv.inRange(image, hsv_low, hsv_max)
-
-    contours, _ = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-
-    coordinates = search_coordinates(contours)
-    if coordinates is not None:
-        x, y = coordinates
-        cv.circle(image, (int(x), int(y)), 5, (0, 255, 0))
-        cv.imshow('', image)
-        cv.waitKey(1)
-
-
+                    return name_figure[len(approx)], x, y
+                
+                except KeyError:
+                    ...
 
 # Test func
 while True:
     sleep(0)
     image = auv.get_image_bottom()
-    ride_red_line(image)
+    search_object(image)
