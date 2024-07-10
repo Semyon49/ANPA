@@ -22,9 +22,19 @@ def search_coordinates(contours) -> tuple[int, int]:
     except IndexError:
         return None
     
+def search_color(image, x, y):
+    color = image[int(y), int(x)]
+    yellow_min, yellow_max = (0, 142, 155), (70, 216, 255)
+    black_min, black_max = (0, 0, 0), (20, 256, 20)
+    print(color)
+    if all(yellow_min[i] <= color[i] <= yellow_max[i] for i in range(3)):
+        print('yellow')
+    if all(black_min[i] <= color[i] <= black_max[i] for i in range(3)):
+        print('black')
+
 def search_object(image) -> tuple[str, int, int]:
     name_figure: dict[int, str] = {3: 'Triangle', 4: 'Quadrilateral'}
-    hsv_low, hsv_max = (25, 100, 10), (150, 255, 255)
+    hsv_low, hsv_max = (25, 100, 0), (150, 255, 255)
 
     image_hsv  = cv.cvtColor(image, cv.COLOR_BGR2HSV)
 
@@ -43,6 +53,7 @@ def search_object(image) -> tuple[str, int, int]:
             if abs(width / 2 - x) < 25 and abs(height / 2 - y) < 35:
                 try:
                     print(name_figure[len(approx)])# is test func
+                    search_color(image, x, y)
                     cv.drawContours(image, contours, -1, (0,255,0), 3)
                     cv.imshow('',image)
                     cv.waitKey(1)
