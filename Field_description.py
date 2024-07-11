@@ -4,8 +4,7 @@ from time import sleep
 
 # Initialize MurAPI and retrieve image dimensions
 auv = mur.mur_init()
-image = auv.get_image_bottom()
-height, width = image.shape[:2]
+height, width = auv.get_image_bottom().shape[:2]
 
 # Define colors as tuples
 blue = (255, 0, 0)
@@ -13,21 +12,21 @@ green = (0, 255, 0)
 red = (0, 0, 255)
 
 
-# def move_to_direction(power=25):
-#     """
-#     Adjusts AUV orientation to a specified direction.
-#     """
-#     yaw_ = auv.get_yaw()
-#     auv.set_motor_power(0, power)
-#     auv.set_motor_power(1, -power)
-#     sleep(0.5)
-#     while abs(yaw_ - auv.get_yaw()) > 10:
-#         power = abs(yaw_ - auv.get_yaw()) * 0.3
-#         auv.set_motor_power(0, power)
-#         auv.set_motor_power(1, -power)
-
-#     auv.set_motor_power(0, 0)
-#     auv.set_motor_power(1, 0)
+def move_to_direction() -> None:
+    """
+    Adjusts AUV orientation to a specified direction.
+    """
+    yaw_ = auv.get_yaw()
+    auv.set_motor_power(0, 25)
+    auv.set_motor_power(1, -25)
+    sleep(1)
+    yaw = auv.get_yaw()
+    while abs(yaw_ - auv.get_yaw()) > 12:
+        print(abs(yaw_ - auv.get_yaw())) # if delete this line than code doesn`t work
+        
+    else:
+        auv.set_motor_power(0, 0)
+        auv.set_motor_power(1, 0)
 
 
 def search_coordinates(contour) -> tuple[float, float]:
@@ -90,32 +89,30 @@ def search_object(image) -> tuple[str, str, float, float]:
                 except KeyError:
                     pass  # Handle unknown figure types
 
+
 def git_object_color() -> tuple[str, str, float, float]:
-    hash = []
-    while len(hash) <= 5:
+    hashes = []
+    while len(hashes) <= 5:
         image = auv.get_image_bottom()
         returned = search_object(image)
 
-        if returned: hash.append(returned)
+        if returned:
+            hashes.append(returned)
 
-    list_object = [hash[i][0] for i in range(len(hash))]
-    list_color  = [hash[i][1] for i in range(len(hash))]
+    list_objects = [hash_[0] for hash_ in hashes]
+    list_colors = [hash_[1] for hash_ in hashes]
 
-    x = [hash[i][-2] for i in range(len(hash))]
-    y = [hash[i][-1] for i in range(len(hash))]
+    x_coords = [hash_[-2] for hash_ in hashes]
+    y_coords = [hash_[-1] for hash_ in hashes]
 
-    most_common_object = max(set(list_object), key=lambda x: (list_object.count(x), -list_object.index(x)))
-    most_common_color = max(set(list_color), key=lambda x: (list_color.count(x), -list_color.index(x)))
+    most_common_object = max(set(list_objects), key=lambda x: (list_objects.count(x), -list_objects.index(x)))
+    most_common_color = max(set(list_colors), key=lambda x: (list_colors.count(x), -list_colors.index(x)))
 
-    x_ = sum(x)/len(x)
-    y_ = sum(y)/len(y)
+    x_mean = sum(x_coords) / len(x_coords)
+    y_mean = sum(y_coords) / len(y_coords)
 
-    return most_common_object, most_common_color, x_, y_
+    return most_common_object, most_common_color, x_mean, y_mean
 
 
-
-move_to_direction()
-
-# while True:
-#     sleep(0)
-#     print(git_object_color())
+while True:
+    git_object_color()
