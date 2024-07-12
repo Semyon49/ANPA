@@ -1,16 +1,40 @@
-import cv2 as cv
+
+import sys
+print('sklearn' in sys.modules)
+
 import pymurapi as mur
 from time import sleep
+import cv2 as cv
+from sklearn.neighbors import KNeighborsClassifier
 
 # Initialize MurAPI and retrieve image dimensions
 auv = mur.mur_init()
+auv.get
 height, width = auv.get_image_bottom().shape[:2]
 
-# Define colors as tuples
-blue = (255, 0, 0)
-green = (0, 255, 0)
-red = (0, 0, 255)
+# Test func
+def col(image, contours):
+    cv.drawContours(image, contours, -1, (0, 255, 0), 3)
+    cv.imshow('', image)
+    cv.waitKey(1)
 
+
+def go_to_box():
+    dict_depth: dict[str, float] = {"1": 3.7, "2": 3.25, "3": 2.85}
+    image = auv.get_image_bottom()
+
+    knn = KNeighborsClassifier(n_neighbors=1)
+
+    # Для начала загружаем и подготавливаем изображение
+    # image 
+    _, binary_image = cv.threshold(image, 127, 255, cv.THRESH_BINARY_INV)
+
+    # Определяем контуры и последовательно предсказываем распознаваемые цифры
+    contours, _ = cv.findContours(binary_image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    for contour in contours:
+        x, y, w, h = cv.boundingRect(contour)
+        roi = binary_image[y:y+h, x:x+w]
+        digit = knn.predict(roi.flatten().reshape(1, -1))[0]
 
 def move_to_direction() -> None:
     """
@@ -58,7 +82,7 @@ def search_color(image, x, y) -> str:
         return 'black' 
 
 
-def search_object(image) -> tuple[str, str, float, float]:
+def search_object(image, error_size = 35) -> tuple[str, str, float, float]:
     """
     Detects and identifies geometric objects in an image.
     """
@@ -77,12 +101,10 @@ def search_object(image) -> tuple[str, str, float, float]:
 
         if search_coordinates(contour) is not None:
             x, y = search_coordinates(contour)
-            if abs(width / 2 - x) < 35 and abs(height / 2 - y) < 35:
+            if abs(width / 2 - x) < error_size and abs(height / 2 - y) < error_size:
                 try:
                     color = search_color(image, x, y)
-                    cv.drawContours(image, contours, -1, (0, 255, 0), 3)
-                    cv.imshow('', image)
-                    cv.waitKey(1)
+                    col(image, contours)
 
                     return name_figure[len(approx)], color, x, y
 
@@ -96,8 +118,7 @@ def git_object_color() -> tuple[str, str, float, float]:
         image = auv.get_image_bottom()
         returned = search_object(image)
 
-        if returned:
-            hashes.append(returned)
+        if returned: hashes.append(returned)
 
     list_objects = [hash_[0] for hash_ in hashes]
     list_colors = [hash_[1] for hash_ in hashes]
@@ -115,4 +136,5 @@ def git_object_color() -> tuple[str, str, float, float]:
 
 
 while True:
-    git_object_color()
+    print(git_object_color())
+    go_to_box()
